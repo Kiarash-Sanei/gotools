@@ -1,76 +1,13 @@
-package main
+package wc
 
 import (
 	"bufio"
 	"fmt"
+	"gotools/common"
 	"io"
 	"os"
 	"strings"
-	"unicode"
 )
-
-func parseTokens(input string) ([]string, error) {
-	var tokens []string
-	var token strings.Builder
-	var quote rune
-	escaped := false
-	tokenStarted := false
-
-	for _, character := range input {
-		if escaped {
-			token.WriteRune(character)
-			escaped = false
-			tokenStarted = true
-			continue
-		}
-
-		if character == '\\' && quote != '\'' {
-			escaped = true
-			tokenStarted = true
-			continue
-		}
-
-		if quote != 0 {
-			if character == quote {
-				quote = 0
-			} else {
-				token.WriteRune(character)
-			}
-			tokenStarted = true
-			continue
-		}
-
-		switch character {
-		case '\'', '"':
-			quote = character
-			tokenStarted = true
-		case '\n', '\r':
-			continue
-		default:
-			if unicode.IsSpace(character) {
-				if tokenStarted {
-					tokens = append(tokens, token.String())
-					token.Reset()
-					tokenStarted = false
-				}
-			} else {
-				token.WriteRune(character)
-				tokenStarted = true
-			}
-		}
-	}
-
-	if escaped {
-		return nil, fmt.Errorf("input ends with an escape character")
-	}
-	if quote != 0 {
-		return nil, fmt.Errorf("unclosed quote")
-	}
-	if tokenStarted {
-		tokens = append(tokens, token.String())
-	}
-	return tokens, nil
-}
 
 func main() {
 	input, err := bufio.NewReader(os.Stdin).ReadString('\n')
@@ -78,7 +15,7 @@ func main() {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(1)
 	}
-	tokens, err := parseTokens(input)
+	tokens, err := common.ParseTokens(input)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(2)
