@@ -2,3 +2,6 @@
 wc/wc
 jq/jq
 grep/grep
+
+# personal
+run.sh

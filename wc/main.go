@@ -1,56 +1,29 @@
-package wc
+package main
 
 import (
-	"bufio"
+	"flag"
 	"fmt"
-	"gotools/common"
-	"io"
 	"os"
 	"strings"
 )
 
 func main() {
-	input, err := bufio.NewReader(os.Stdin).ReadString('\n')
-	if err != nil && err != io.EOF {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
-	}
-	tokens, err := common.ParseTokens(input)
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		os.Exit(2)
-	}
-
 	lineOption, wordOption, byteOption := false, false, false
-	var flags []string
-	var fileNames []string
-	for _, token := range tokens {
-		if strings.HasPrefix(token, "-") {
-			flags = append(flags, token)
-		} else {
-			fileNames = append(fileNames, token)
-		}
-	}
+	flag.BoolVar(&lineOption, "l", false, "print line count")
+	flag.BoolVar(&wordOption, "w", false, "print word count")
+	flag.BoolVar(&byteOption, "c", false, "print byte count")
+	flag.Parse()
 
-	for _, flag := range flags {
-		switch flag {
-		case "-l":
-			lineOption = true
-		case "-w":
-			wordOption = true
-		case "-c":
-			byteOption = true
-		default:
-			fmt.Fprintf(os.Stderr, "unknown option: %s\n", flag)
-			os.Exit(2)
-		}
-	}
-	if len(flags) == 0 {
+	optionProvided := false
+	flag.Visit(func(_ *flag.Flag) {
+		optionProvided = true
+	})
+	if !optionProvided {
 		lineOption, wordOption, byteOption = true, true, true
 	}
 
 	exitCode := 0
-	for _, fileName := range fileNames {
+	for _, fileName := range flag.Args() {
 		content, err := os.ReadFile(fileName)
 		if err != nil {
 			fmt.Fprintf(os.Stderr, "cannot read %s: %v\n", fileName, err)
