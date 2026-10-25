@@ -1,21 +1,54 @@
 package main
 
 import (
+	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"os"
 	"strings"
+	"unicode"
 )
 
-func main() {
+func count(r io.Reader) (lineCount, wordCount, byteCount int, err error) {
+	reader := bufio.NewReader(r)
+	inWord := false
+
+	for {
+		character, size, readErr := reader.ReadRune()
+		if readErr != nil {
+			if readErr == io.EOF {
+				return lineCount, wordCount, byteCount, nil
+			}
+			return lineCount, wordCount, byteCount, readErr
+		}
+
+		byteCount += size
+		if character == '\n' {
+			lineCount++
+		}
+		if unicode.IsSpace(character) {
+			inWord = false
+		} else if !inWord {
+			wordCount++
+			inWord = true
+		}
+	}
+}
+
+func run(args []string, stdout, stderr io.Writer) int {
 	lineOption, wordOption, byteOption := false, false, false
-	flag.BoolVar(&lineOption, "l", false, "print line count")
-	flag.BoolVar(&wordOption, "w", false, "print word count")
-	flag.BoolVar(&byteOption, "c", false, "print byte count")
-	flag.Parse()
+	flags := flag.NewFlagSet("wc", flag.ContinueOnError)
+	flags.SetOutput(stderr)
+	flags.BoolVar(&lineOption, "l", false, "print line count")
+	flags.BoolVar(&wordOption, "w", false, "print word count")
+	flags.BoolVar(&byteOption, "c", false, "print byte count")
+	if err := flags.Parse(args); err != nil {
+		return 2
+	}
 
 	optionProvided := false
-	flag.Visit(func(_ *flag.Flag) {
+	flags.Visit(func(_ *flag.Flag) {
 		optionProvided = true
 	})
 	if !optionProvided {
@@ -23,18 +56,25 @@ func main() {
 	}
 
 	exitCode := 0
-	for _, fileName := range flag.Args() {
-		content, err := os.ReadFile(fileName)
+	for _, fileName := range flags.Args() {
+		file, err := os.Open(fileName)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "cannot read %s: %v\n", fileName, err)
+			fmt.Fprintf(stderr, "cannot read %s: %v\n", fileName, err)
 			exitCode = 1
 			continue
 		}
-		text := string(content)
-
-		lineCount := strings.Count(text, "\n")
-		wordCount := len(strings.Fields(text))
-		byteCount := len(text)
+		lineCount, wordCount, byteCount, countErr := count(file)
+		closeErr := file.Close()
+		if countErr != nil {
+			fmt.Fprintf(stderr, "cannot read %s: %v\n", fileName, countErr)
+			exitCode = 1
+			continue
+		}
+		if closeErr != nil {
+			fmt.Fprintf(stderr, "cannot close %s: %v\n", fileName, closeErr)
+			exitCode = 1
+			continue
+		}
 
 		counts := make([]string, 0, 3)
 		if lineOption {
@@ -46,7 +86,11 @@ func main() {
 		if byteOption {
 			counts = append(counts, fmt.Sprint(byteCount))
 		}
-		fmt.Println(strings.Join(counts, " "), fileName)
+		fmt.Fprintln(stdout, strings.Join(counts, " "), fileName)
 	}
-	os.Exit(exitCode)
+	return exitCode
+}
+
+func main() {
+	os.Exit(run(os.Args[1:], os.Stdout, os.Stderr))
 }
