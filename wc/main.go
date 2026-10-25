@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"errors"
 	"flag"
 	"fmt"
 	"io"
@@ -17,7 +18,7 @@ func count(r io.Reader) (lineCount, wordCount, byteCount int, err error) {
 	for {
 		character, size, readErr := reader.ReadRune()
 		if readErr != nil {
-			if readErr == io.EOF {
+			if errors.Is(readErr, io.EOF) {
 				return lineCount, wordCount, byteCount, nil
 			}
 			return lineCount, wordCount, byteCount, readErr

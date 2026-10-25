@@ -2,11 +2,20 @@ package main
 
 import (
 	"bytes"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 )
+
+type failingReader struct {
+	err error
+}
+
+func (reader failingReader) Read([]byte) (int, error) {
+	return 0, reader.err
+}
 
 func TestCount(t *testing.T) {
 	tests := []struct {
@@ -32,6 +41,14 @@ func TestCount(t *testing.T) {
 				t.Errorf("count = (%d, %d, %d), want (%d, %d, %d)", lines, words, byteCount, test.lines, test.words, test.byteCount)
 			}
 		})
+	}
+}
+
+func TestCountReadError(t *testing.T) {
+	wantErr := errors.New("read failed")
+	_, _, _, err := count(failingReader{err: wantErr})
+	if !errors.Is(err, wantErr) {
+		t.Fatalf("count error = %v, want %v", err, wantErr)
 	}
 }
 
